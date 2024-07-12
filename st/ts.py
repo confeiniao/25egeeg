@@ -1,10 +1,10 @@
-# coding=utf-8
+import time
 import requests
 import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 import dns.resolver
- 
+
 lines_to_keep = []
 
 def fetch_url(url):
@@ -36,16 +36,34 @@ def process_filter(url):
                 lines_to_keep.append(line)
 
 def check_dns_resolution(domain):
-    try:
-        result = dns.resolver.resolve(domain, 'A')
-        ips = [r.address for r in result]
-        return ips[0] if ips else None
-    except dns.resolver.NoAnswer:
-        return None
-    except dns.resolver.NXDOMAIN:
-        return None
-    except dns.resolver.Timeout:
-        return None
+    max_retries = 3
+    retries = 0
+    while retries < max_retries:
+        try:
+            resolver = dns.resolver.Resolver()
+            result = resolver.resolve(domain, 'A')
+            ips = [r.address for r in result]
+            return ips[0] if ips else None
+        except dns.resolver.NoAnswer:
+            retries += 1
+            if retries < max_retries:
+                time.sleep(5)  # 每次重试前等待 5 秒
+            else:
+                return None
+        except dns.resolver.NXDOMAIN:
+            return None
+        except dns.resolver.Timeout:
+            retries += 1
+            if retries < max_retries:
+                time.sleep(5)  # 每次重试前等待 5 秒
+            else:
+                return None
+        except dns.resolver.NoNameservers:
+            retries += 1
+            if retries < max_retries:
+                time.sleep(5)  # 每次重试前等待 5 秒
+            else:
+                return None
 
 def filter_domains(lines):
     lines.sort(key=len)
