@@ -35,16 +35,21 @@ def process_filter(url):
                 line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
                 lines_to_keep.append(line)
 
-def check_dns_resolution(domain):
+ddef check_dns_resolution(domain):
     try:
-        result = dns.resolver.resolve(domain, 'A')
-        ips = [r.address for r in result]
-        return ips[0] if ips else None
-    except dns.resolver.NoAnswer:
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 2  # 设置超时时间为1秒
+        resolver.lifetime = 2  # 设置查询生存时间为1秒
+        answers = resolver.resolve(domain, 'A')
+        return [rdata.address for rdata in answers]
+    except dns.resolver.NoNameservers as e:
+        print(f"DNS resolution failed for {domain}: {e}")
         return None
-    except dns.resolver.NXDOMAIN:
+    except socket.gaierror as e:
+        print(f"Socket error for {domain}: {e}")
         return None
-    except dns.resolver.Timeout:
+    except Exception as e:
+        print(f"Unexpected error for {domain}: {e}")
         return None
 
 def filter_domains(lines):
