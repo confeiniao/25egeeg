@@ -63,7 +63,7 @@ if __name__ == '__main__':
     ]
 
     # 使用 ThreadPoolExecutor 创建线程池，数量为200
-    with ThreadPoolExecutor(max_workers=200) as executor:
+    with ThreadPoolExecutor(max_workers=99) as executor:
         futures = [executor.submit(process_filter, url) for url in urls]
         
         # 显示进度条
