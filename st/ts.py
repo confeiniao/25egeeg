@@ -35,21 +35,16 @@ def process_filter(url):
                 line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
                 lines_to_keep.append(line)
 
-ddef check_dns_resolution(domain):
+def check_dns_resolution(domain):
     try:
-        resolver = dns.resolver.Resolver()
-        resolver.timeout = 2  # 设置超时时间为1秒
-        resolver.lifetime = 2  # 设置查询生存时间为1秒
-        answers = resolver.resolve(domain, 'A')
-        return [rdata.address for rdata in answers]
-    except dns.resolver.NoNameservers as e:
-        print(f"DNS resolution failed for {domain}: {e}")
+        result = dns.resolver.resolve(domain, 'A')
+        ips = [r.address for r in result]
+        return ips[0] if ips else None
+    except dns.resolver.NoAnswer:
         return None
-    except socket.gaierror as e:
-        print(f"Socket error for {domain}: {e}")
+    except dns.resolver.NXDOMAIN:
         return None
-    except Exception as e:
-        print(f"Unexpected error for {domain}: {e}")
+    except dns.resolver.Timeout:
         return None
 
 def filter_domains(lines):
@@ -68,7 +63,7 @@ if __name__ == '__main__':
     ]
 
     # 使用 ThreadPoolExecutor 创建线程池，数量为200
-    with ThreadPoolExecutor(max_workers=99) as executor:
+    with ThreadPoolExecutor(max_workers=200) as executor:
         futures = [executor.submit(process_filter, url) for url in urls]
         
         # 显示进度条
