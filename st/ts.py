@@ -1,6 +1,8 @@
 # coding=utf-8
 import requests
 import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 lines_to_keep = []
 
@@ -14,7 +16,7 @@ def fetch_url(url):
             response = requests.get(url)
             response.raise_for_status()
             return response.text
-        except:
+        except requests.exceptions.RequestException:
             retries += 1
             if retries == max_retries - 2:
                 url = url.replace('mirror.ghproxy', 'gh-proxy')
@@ -36,7 +38,7 @@ def check_dns_resolution(domain):
     try:
         ip_sock = socket.getaddrinfo(domain, None)
         return ip_sock
-    except:
+    except socket.gaierror:
         return None
 
 def filter_domains(lines):
@@ -54,27 +56,32 @@ if __name__ == '__main__':
         'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts'
     ]
 
-    for url in urls:
-        process_filter(url)
-
+    # 使用 ThreadPoolExecutor 创建线程池，数量为200
+    with ThreadPoolExecutor(max_workers=200) as executor:
+        futures = [executor.submit(process_filter, url) for url in urls]
+        
+        # 显示进度条
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Fetching URLs"):
+            pass  # 等待所有任务完成
+    
     lines_to_keep = list(set(lines_to_keep))
 
     valid_domains = []
-    for domain in lines_to_keep:
-        ip = check_dns_resolution(domain)
-        if ip:
-            valid_domains.append(domain)
+    # 使用 ThreadPoolExecutor 再次创建线程池，数量为200
+    with ThreadPoolExecutor(max_workers=200) as executor:
+        futures = [executor.submit(check_dns_resolution, domain) for domain in lines_to_keep]
+        
+        # 显示进度条
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Checking DNS Resolution"):
+            ip = future.result()
+            if ip:
+                valid_domains.append(ip[0][4][0])
 
-    lines_to_keep = []
+    lines_to_keep = filter_domains(valid_domains)
+
     output_file = '/root/workspace/st/dnsmasq.conf'
-    if valid_domains:
-        lines_to_keep = filter_domains(valid_domains)
-
-    valid_domains = []
-    unique_lines = []
-
-    if len(lines_to_keep) > 1:
+    if lines_to_keep:
         with open(output_file, 'w', encoding='utf-8') as f_out:
-            f_out.writelines(lines_to_keep)
-    print(len(lines_to_keep))
-    lines_to_keep = []
+            f_out.writelines(line + '\n' for line in lines_to_keep)
+
+    print(f"Total unique domains written to {output_file}: {len(lines_to_keep)}")
