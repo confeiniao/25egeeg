@@ -3,6 +3,7 @@ import requests
 import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
+import dns.resolver
 
 lines_to_keep = []
 
@@ -36,9 +37,14 @@ def process_filter(url):
 
 def check_dns_resolution(domain):
     try:
-        ip_sock = socket.getaddrinfo(domain, None)
-        return ip_sock
-    except socket.gaierror:
+        result = dns.resolver.resolve(domain, 'A')
+        ips = [r.address for r in result]
+        return ips[0] if ips else None
+    except dns.resolver.NoAnswer:
+        return None
+    except dns.resolver.NXDOMAIN:
+        return None
+    except dns.resolver.Timeout:
         return None
 
 def filter_domains(lines):
@@ -75,7 +81,7 @@ if __name__ == '__main__':
         for future in tqdm(as_completed(futures), total=len(futures), desc="Checking DNS Resolution"):
             ip = future.result()
             if ip:
-                valid_domains.append(ip[0][4][0])
+                valid_domains.append(ip)
 
     lines_to_keep = filter_domains(valid_domains)
 
