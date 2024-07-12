@@ -4,7 +4,7 @@ import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 import dns.resolver
-
+ 
 lines_to_keep = []
 
 def fetch_url(url):
