@@ -82,10 +82,7 @@ def process_domains(domain_list):
 
 urls = [
     'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt',
-    'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts',
-    'https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_11_Mobile/filter.txt',
-    'https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt',
-    'https://easylist-downloads.adblockplus.org/easylistchina.txt'
+    'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts'
 ]
 
 for url in urls:
