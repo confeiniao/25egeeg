@@ -101,5 +101,5 @@ if lines_to_keep:
     if len(lines_to_keep) > 2000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
             f_out.writelines(lines_to_keep)
-
+        print('共%s条AD' % len(lines_to_keep))
 lines_to_keep = []
