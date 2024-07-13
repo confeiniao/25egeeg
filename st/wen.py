@@ -37,17 +37,14 @@ def gh_tuisong(biaoti, neirong, canshu):
             print('公号提醒失败，错误提示：%s' % response_json['msg'])
 
 def process_gupiao_content(content):
-    processed_data = []
-    lines = content.splitlines()
-    for line in lines:
-        line = line.strip()
-        if line.isdigit() and len(line) == 6:
-            if line.startswith(('30', '00')):
-                line = 'sz' + line
-            elif line.startswith('60'):
-                line = 'sh' + line
-            processed_data.append(line)
-    return processed_data
+    result = []
+    for code in gupiao_res:
+        digits = code.split('.')[0]
+        if digits.isdigit() and len(digits) == 6 and (digits.startswith('30') or digits.startswith('00')):
+            result.append('sz' + digits)
+        elif digits.isdigit() and digits.startswith('60'):
+            result.append('sh' + digits)
+    return result
 
 webhook_key = '0ecd045f-082d-4c8c-b5cd-b5d62b3f9a38'
 token = '7700b291a13d4d1eaefdf7fc29c48267'
@@ -64,10 +61,9 @@ try:
         send_weixin('----获取到空列表----\n已退出pywen程序\n访问时间：%s\n条件：%s' % (fw_sj, wenju))
         print('获取到0条信息，已退出程序')
         sys.exit()
+    gup = process_gupiao_content(gupiao_res)
     with open('/root/workspace/st/gupiaochi.txt', 'w', encoding='utf-8') as file:
-        gupiao_data = process_gupiao_content(gupiao_res)
-        gupiao_data = ','.join(gupiao_data)
-        file.write(gupiao_data)
+        file.write(','.join(gup))
     send_weixin('----访问成功----\n访问时间：%s\n共索引到%s条信息\n条件：%s' % (fw_sj, len(gupiao_res), wenju))
     print('共索引到%s条信息'%len(gupiao_res))
 except Exception as e:
