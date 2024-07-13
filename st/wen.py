@@ -65,7 +65,7 @@ try:
         print('获取到0条信息，已退出程序')
         sys.exit()
     with open('/root/workspace/st/gupiaochi.txt', 'w', encoding='utf-8') as file:
-        gupiao_data = process_gupiao_content(gupiao_content)
+        gupiao_data = process_gupiao_content(gupiao_res)
         gupiao_data = ','.join(gupiao_data)
         file.write(gupiao_data)
     send_weixin('----访问成功----\n访问时间：%s\n共索引到%s条信息\n条件：%s' % (fw_sj, len(gupiao_res), wenju))
