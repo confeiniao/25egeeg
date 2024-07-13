@@ -41,21 +41,21 @@ token = '7700b291a13d4d1eaefdf7fc29c48267'
 wenju = '非ST；54天内的3天3板；'
 
 try:
-    pywencai_res = pywencai.get(query=data, loop=True, sleep=3)
+    pywencai_res = pywencai.get(query=wenju, loop=True, sleep=3)
     gupiao_res = pywencai_res['股票代码'].tolist()
     now = datetime.datetime.now()
     fw_sj = now.strftime('%H:%M')
     if gupiao_res:
         pass
     else:
-        send_weixin('----获取到空列表----\n已退出pywen程序\n访问时间：%s\n条件：%s' % (fw_sj, data))
+        send_weixin('----获取到空列表----\n已退出pywen程序\n访问时间：%s\n条件：%s' % (fw_sj, wenju))
         print('获取到0条信息，已退出程序')
         sys.exit()
     with open('/root/workspace/st/gupiaochi.txt', 'w', encoding='utf-8') as file:
         for code in gupiao_res:
             pure_number = code.split('.')[0]
             file.write(pure_number + '\n')
-    send_weixin('----访问成功----\n访问时间：%s\n共索引到%s条信息\n条件：%s' % (fw_sj, len(gupiao_res), data))
+    send_weixin('----访问成功----\n访问时间：%s\n共索引到%s条信息\n条件：%s' % (fw_sj, len(gupiao_res), wenju))
     print('共索引到%s条信息'%len(gupiao_res))
 except Exception as e:
     send_weixin('----访问失败----\n访问时间：%s\n错误提示：%s' % (fw_sj, e))
