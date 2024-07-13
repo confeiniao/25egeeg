@@ -1,4 +1,5 @@
 # coding=utf-8
+import datetime
 import requests
 import dns.resolver
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -61,6 +62,7 @@ def filter_domains(lines):
 
 def address(sock):
     add = []
+    add.append('%s\n' % datetime.datetime.now())
     for line in sock:
         add.append('address=/%s/#\n' % line)
     return add
