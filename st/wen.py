@@ -40,15 +40,6 @@ webhook_key = '0ecd045f-082d-4c8c-b5cd-b5d62b3f9a38'
 token = '7700b291a13d4d1eaefdf7fc29c48267'
 wenju = '非ST；54天内的3天3板；'
 
-with open('./%s' % wenju, 'r', encoding='utf-8') as file:
-    data = file.read()
-if data:
-    print('条件：%s' % data)
-else:
-    send_weixin('条件配置为空（py）')
-    print('条件配置为空，已退出程序')
-    sys.exit()
-
 try:
     pywencai_res = pywencai.get(query=data, loop=True, sleep=3)
     gupiao_res = pywencai_res['股票代码'].tolist()
