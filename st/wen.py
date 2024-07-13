@@ -36,20 +36,9 @@ def gh_tuisong(biaoti, neirong, canshu):
         else:
             print('公号提醒失败，错误提示：%s' % response_json['msg'])
 
-config = configparser.ConfigParser()
-with open('./必读配置说明.ini', 'r', encoding='GBK') as file:
-    config.read_file(file)
-webhook_key = config.get('Section2', 'webhook_key')
-txtwjm = config.get('Section2', 'txt股票池')
-token = config.get('Section2', 'token')
-wenju = config.get('Section2', 'wenju')
-if webhook_key and txtwjm and token and wenju:
-    pass
-else:
-    send_weixin('ini配置错误，请登录检查')
-    gh_tuisong('ini配置错误', '请登录检查', '错误')
-    print('ini配置设置不正确，已退出程序')
-    sys.exit()
+webhook_key = '0ecd045f-082d-4c8c-b5cd-b5d62b3f9a38'
+token = '7700b291a13d4d1eaefdf7fc29c48267'
+wenju = '非ST；54天内的3天3板；'
 
 with open('./%s' % wenju, 'r', encoding='utf-8') as file:
     data = file.read()
@@ -71,7 +60,7 @@ try:
         send_weixin('----获取到空列表----\n已退出pywen程序\n访问时间：%s\n条件：%s' % (fw_sj, data))
         print('获取到0条信息，已退出程序')
         sys.exit()
-    with open('./%s' % txtwjm, 'w', encoding='utf-8') as file:
+    with open('/root/workspace/st/gupiaochi.txt', 'w', encoding='utf-8') as file:
         for code in gupiao_res:
             pure_number = code.split('.')[0]
             file.write(pure_number + '\n')
