@@ -48,7 +48,7 @@ def check_dns_resolution(domain):
     except dns.resolver.NoNameservers:
         return None
     except Exception as e:
-        print(f"Error resolving {domain}: {str(e)}")
+        pass
         return None
 
 def filter_domains(lines):
