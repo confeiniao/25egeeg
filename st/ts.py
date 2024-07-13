@@ -62,7 +62,7 @@ def filter_domains(lines):
 
 def address(sock):
     add = []
-    add.append('# %s\n' % datetime.datetime.now())
+    add.append('#addres %s\n' % datetime.datetime.now())
     for line in sock:
         add.append('address=/%s/#\n' % line)
     return add
