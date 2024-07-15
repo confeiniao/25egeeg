@@ -31,8 +31,8 @@ def process_filter(url):
         for line in file_contents.splitlines():
             line = line.strip()
             if (line.startswith('||') and line.endswith('^') and '/' not in line and '*' not in line and 'localhost' not in line and '10jqka' not in line) or \
-               line.startswith('127.0.0.1') or line.startswith('0.0.0.0'):
-                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace('0.0.0.0', '').replace(' ', '')
+               line.startswith('127.0.0.1'):
+                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
                 lines_to_keep.append(line)
 
 def check_dns_resolution(domain):
@@ -83,7 +83,6 @@ def process_domains(domain_list):
 urls = [
     'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt',
     'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts',
-    'https://raw.githubusercontent.com/VeleSila/yhosts/master/hosts',
     'https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_11_Mobile/filter.txt',
     'https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_224_Chinese/filter.txt',
     'https://raw.githubusercontent.com/easylist/easylistchina/master/easylistchina.txt'
