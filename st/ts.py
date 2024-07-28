@@ -83,12 +83,15 @@ def process_domains(domain_list):
 urls = [
     'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-hosts.txt',
     'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts',
+    'https://raw.githubusercontent.com/liamliu108/miTVhosts/master/hosts',
     'https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_11_Mobile/filter.txt'
 ]
 
 for url in urls:
     process_filter(url)
 
+lines_to_keep.append('api.io.mi.com')
+lines_to_keep.append('device.io.mi.com')
 lines_to_keep = list(set(lines_to_keep))
 
 output_file = '/root/workspace/st/dnsmasq.conf'
