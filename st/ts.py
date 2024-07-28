@@ -31,8 +31,8 @@ def process_filter(url):
         for line in file_contents.splitlines():
             line = line.strip()
             if ((line.startswith('||') and line.endswith('^') and '/' not in line and '*' not in line) or \
-               line.startswith('127.0.0.1') or line.startswith('address=/')) and 'localhost' not in line:
-                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '').replace('address=', '').replace('/', '')
+               line.startswith('127.0.0.1')) and 'localhost' not in line:
+                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
                 lines_to_keep.append(line)
 
 def check_dns_resolution(domain):
@@ -70,7 +70,7 @@ def address(sock):
 def process_domains(domain_list):
     valid_domains = []
     with tqdm.tqdm(total=len(domain_list), desc='Processing domains') as pbar:
-        with ThreadPoolExecutor(max_workers=500) as executor:
+        with ThreadPoolExecutor(max_workers=99) as executor:
             future_to_domain = {executor.submit(check_dns_resolution, domain): domain for domain in domain_list}
             for future in as_completed(future_to_domain):
                 domain = future_to_domain[future]
@@ -84,7 +84,7 @@ urls = [
     'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-hosts.txt',
     'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts',
     'https://raw.githubusercontent.com/liamliu108/miTVhosts/master/hosts',
-    'https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/adblock-for-dnsmasq.conf'
+    'https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_11_Mobile/filter.txt'
 ]
 
 for url in urls:
@@ -99,7 +99,7 @@ if lines_to_keep:
     valid_domains = process_domains(lines_to_keep)
     lines_to_keep = address(filter_domains(valid_domains))
 
-    if len(lines_to_keep) > 2000:
+    if len(lines_to_keep) > 1000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
             f_out.writelines(lines_to_keep)
         print('共%s条AD' % len(lines_to_keep))
