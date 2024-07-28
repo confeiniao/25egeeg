@@ -38,7 +38,7 @@ def process_filter(url):
 def check_dns_resolution(domain):
     try:
         resolver = dns.resolver.Resolver()
-        answers = resolver.query(domain)
+        answers = resolver.resolve(domain)
         ips = [answer.address for answer in answers]
         return ips
     except dns.resolver.NoAnswer:
