@@ -38,7 +38,7 @@ def process_filter(url):
 def check_dns_resolution(domain):
     try:
         resolver = dns.resolver.Resolver()
-        answers = resolver.query(domain)
+        answers = resolver.resolve(domain)
         ips = [answer.address for answer in answers]
         return ips
     except dns.resolver.NoAnswer:
@@ -70,7 +70,7 @@ def address(sock):
 def process_domains(domain_list):
     valid_domains = []
     with tqdm.tqdm(total=len(domain_list), desc='Processing domains') as pbar:
-        with ThreadPoolExecutor(max_workers=99) as executor:
+        with ThreadPoolExecutor(max_workers=500) as executor:
             future_to_domain = {executor.submit(check_dns_resolution, domain): domain for domain in domain_list}
             for future in as_completed(future_to_domain):
                 domain = future_to_domain[future]
