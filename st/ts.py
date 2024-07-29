@@ -31,8 +31,8 @@ def process_filter(url):
         for line in file_contents.splitlines():
             line = line.strip()
             if ((line.startswith('||') and line.endswith('^') and '/' not in line and '*' not in line) or \
-               line.startswith('127.0.0.1') or line.startswith('0.0.0.0') ) and 'localhost' not in line:
-                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace('0.0.0.0', '').replace(' ', '')
+               line.startswith('127.0.0.1')) and 'localhost' not in line:
+                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
                 lines_to_keep.append(line)
 
 def check_dns_resolution(domain):
@@ -83,10 +83,7 @@ def process_domains(domain_list):
 urls = [
     'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-hosts.txt',
     'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts',
-    'https://raw.githubusercontent.com/liamliu108/miTVhosts/master/hosts',
-    'https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt',
-    'https://raw.githubusercontent.com/Goooler/1024_hosts/master/hosts',
-    'https://raw.githubusercontent.com/VeleSila/yhosts/master/hosts'
+    'https://raw.githubusercontent.com/liamliu108/miTVhosts/master/hosts'
 ]
 
 for url in urls:
@@ -101,7 +98,7 @@ if lines_to_keep:
     valid_domains = process_domains(lines_to_keep)
     lines_to_keep = address(filter_domains(valid_domains))
 
-    if len(lines_to_keep) > 3000:
+    if len(lines_to_keep) > 1000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
             f_out.writelines(lines_to_keep)
         print('共%s条AD' % len(lines_to_keep))
