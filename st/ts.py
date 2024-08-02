@@ -64,7 +64,7 @@ def address(sock):
     add = []
     add.append('#addres %s\n' % datetime.datetime.now())
     for line in sock:
-        add.append('address=/%s/#\n' % line)
+        add.append('address /%s/#\n' % line)
     return add
 
 def process_domains(domain_list):
