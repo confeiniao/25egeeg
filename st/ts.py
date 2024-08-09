@@ -6,6 +6,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import tqdm
 
 lines_to_keep = []
+reject_list = []
+lines_list = []
+
 
 def fetch_url(url):
     max_retries = 3
@@ -34,6 +37,7 @@ def process_filter(url):
                line.startswith('127.0.0.1')) and 'localhost' not in line:
                 line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
                 lines_to_keep.append(line)
+        return lines_to_keep
 
 def check_dns_resolution(domain):
     try:
@@ -62,47 +66,46 @@ def filter_domains(lines):
 
 def address(sock):
     add = []
-    add.append('#addres %s\n' % datetime.datetime.now())
+    now = datetime.datetime.now()
+    add.append('domain:{}.{}.{}.test\n'.format(now.month, now.day, now.hour))
     for line in sock:
-        add.append('address /%s/#\n' % line)
+        add.append('domain:%s\n' % line)
     return add
 
 def process_domains(domain_list):
     valid_domains = []
     with tqdm.tqdm(total=len(domain_list), desc='Processing domains') as pbar:
-        with ThreadPoolExecutor(max_workers=200) as executor:
+        with ThreadPoolExecutor(max_workers=199) as executor:
             future_to_domain = {executor.submit(check_dns_resolution, domain): domain for domain in domain_list}
             for future in as_completed(future_to_domain):
                 domain = future_to_domain[future]
                 ip = future.result()
                 pbar.update(1)
                 if ip:
-                    valid_domains.append('%s\n' % domain)
+                    valid_domains.append(domain)
     return valid_domains
 
-urls = [
-    'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-hosts.txt',
-    'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts',
-    'https://raw.githubusercontent.com/liamliu108/miTVhosts/master/hosts'
-]
+urls = 'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-hosts.txt'
+lines_to_keep = process_filter(urls)
 
-for url in urls:
-    process_filter(url)
-
-lines_to_keep.append('api.io.mi.com')
-lines_to_keep.append('device.io.mi.com')
-url = "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/reject-list.txt"
+url = 'https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/reject-list.txt'
 reject_list = fetch_url(url)
 reject_list = reject_list.splitlines()
-combined_lines = set(lines_to_keep) | set(reject_list)
-lines_to_keep = list(combined_lines)
+
+with open('/root/workspace/st/ad_j.txt', 'r') as file:
+    for line in file:
+        lines_list.append(line.strip())
+
+he_list = set(lines_to_keep) | set(reject_list) | set(lines_list)
+
+lines_to_keep = list(he_list)
 
 output_file = '/root/workspace/st/ad.txt'
 if lines_to_keep:
     valid_domains = process_domains(lines_to_keep)
-    lines_to_keep = sorted(valid_domains)
+    lines_to_keep = address(filter_domains(valid_domains))
 
-    if len(lines_to_keep) > 50000:
+    if len(lines_to_keep) > 20000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
             f_out.writelines(lines_to_keep)
         print('共%s条AD' % len(lines_to_keep))
