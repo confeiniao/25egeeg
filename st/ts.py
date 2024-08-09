@@ -99,7 +99,7 @@ lines_to_keep = list(combined_lines)
 
 output_file = '/root/workspace/st/ad.txt'
 if lines_to_keep:
-    //valid_domains = process_domains(lines_to_keep)
+//    valid_domains = process_domains(lines_to_keep)
     lines_to_keep = filter_domains(lines_to_keep)
 
     if len(lines_to_keep) > 50000:
