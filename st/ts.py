@@ -31,8 +31,8 @@ def process_filter(url):
         for line in file_contents.splitlines():
             line = line.strip()
             if ((line.startswith('||') and line.endswith('^') and '/' not in line and '*' not in line) or \
-               line.startswith('127.0.0.1')) and 'localhost' not in line:
-                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
+               line.startswith('127.0.0.1') or line.startswith('  - '+.')) and 'localhost' not in line:
+                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace('  - '+.', '').replace(' ', '')
                 lines_to_keep.append(line)
 
 def check_dns_resolution(domain):
@@ -70,7 +70,7 @@ def address(sock):
 def process_domains(domain_list):
     valid_domains = []
     with tqdm.tqdm(total=len(domain_list), desc='Processing domains') as pbar:
-        with ThreadPoolExecutor(max_workers=99) as executor:
+        with ThreadPoolExecutor(max_workers=200) as executor:
             future_to_domain = {executor.submit(check_dns_resolution, domain): domain for domain in domain_list}
             for future in as_completed(future_to_domain):
                 domain = future_to_domain[future]
@@ -83,7 +83,8 @@ def process_domains(domain_list):
 urls = [
     'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-hosts.txt',
     'https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts',
-    'https://raw.githubusercontent.com/liamliu108/miTVhosts/master/hosts'
+    'https://raw.githubusercontent.com/liamliu108/miTVhosts/master/hosts',
+    'https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt'
 ]
 
 for url in urls:
