@@ -31,7 +31,7 @@ def process_filter(url):
         for line in file_contents.splitlines():
             line = line.strip()
             if ((line.startswith('||') and line.endswith('^') and '/' not in line and '*' not in line) or \
-               line.startswith('127.0.0.1') or line.startswith('  - '+.')) and 'localhost' not in line:
+               line.startswith('127.0.0.1') or line.startswith('  - .')) and 'localhost' not in line:
                 line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace('  - '+.', '').replace(' ', '')
                 lines_to_keep.append(line)
 
@@ -97,7 +97,7 @@ lines_to_keep = list(set(lines_to_keep))
 output_file = '/root/workspace/st/dnsmasq.conf'
 if lines_to_keep:
     valid_domains = process_domains(lines_to_keep)
-    lines_to_keep = address(filter_domains(valid_domains))
+    lines_to_keep = filter_domains(valid_domains)
 
     if len(lines_to_keep) > 1000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
