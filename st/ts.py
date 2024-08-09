@@ -70,14 +70,14 @@ def address(sock):
 def process_domains(domain_list):
     valid_domains = []
     with tqdm.tqdm(total=len(domain_list), desc='Processing domains') as pbar:
-        with ThreadPoolExecutor(max_workers=99) as executor:
+        with ThreadPoolExecutor(max_workers=200) as executor:
             future_to_domain = {executor.submit(check_dns_resolution, domain): domain for domain in domain_list}
             for future in as_completed(future_to_domain):
                 domain = future_to_domain[future]
                 ip = future.result()
                 pbar.update(1)
                 if ip:
-                    valid_domains.append(domain)
+                    valid_domains.append('%s\n' % domain)
     return valid_domains
 
 urls = [
@@ -99,8 +99,8 @@ lines_to_keep = list(combined_lines)
 
 output_file = '/root/workspace/st/ad.txt'
 if lines_to_keep:
-#    valid_domains = process_domains(lines_to_keep)
-    lines_to_keep = filter_domains(lines_to_keep)
+    valid_domains = process_domains(lines_to_keep)
+    lines_to_keep = sorted(valid_domains)
 
     if len(lines_to_keep) > 50000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
