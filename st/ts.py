@@ -51,6 +51,24 @@ def process_filter2(url):
                 line = line.replace('||', '').replace('^', '')
                 lines_to_2.append(line)                
 
+def filter_rules(rules):
+    def is_matching(pattern, rule):
+        pattern = pattern[2:-1]
+        rule = rule[2:-1]
+        return fnmatch.fnmatch(rule, pattern)
+
+    remaining_rules_set = set(rules)
+    rules_to_check = [rule for rule in rules if '*' in rule]
+    
+    for pattern in rules_to_check:
+        to_remove = set()
+        for rule in remaining_rules_set:
+            if rule != pattern and is_matching(pattern, rule):
+                to_remove.add(rule)
+        remaining_rules_set.difference_update(to_remove)
+
+    return list(remaining_rules_set)
+
 def check_dns_resolution(domain):
     try:
         resolver = dns.resolver.Resolver()
@@ -128,7 +146,7 @@ if lines_to_keep:
     lines_to_keep = lines_to_keep + lines_to_2
     lines_to_keep = sorted(lines_to_keep)
     lines_to_keep = address(lines_to_keep, lines_to_1)
-
+    lines_to_keep = filter_rules(lines_to_keep)
     if len(lines_to_keep) > 25000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
             f_out.writelines(lines_to_keep)
