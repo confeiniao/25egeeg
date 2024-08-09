@@ -4,6 +4,7 @@ import requests
 import dns.resolver
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import tqdm
+import fnmatch
 
 lines_to_keep = []
 reject_list = []
