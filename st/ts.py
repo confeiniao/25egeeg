@@ -96,8 +96,6 @@ def filter_domains(lines):
 
 def address(sock, s2):
     add = []
-    now = datetime.datetime.now()
-    add.append('!{}\n'.format(now))
     for line in s2:
         add.append('%s\n' % line)
     for line in sock:
@@ -145,9 +143,10 @@ if lines_to_keep:
     for url in urls:
         process_filter2(url)
     lines_to_keep = lines_to_keep + lines_to_2
-    lines_to_keep = sorted(lines_to_keep)
     lines_to_keep = address(lines_to_keep, lines_to_1)
     lines_to_keep = filter_rules(lines_to_keep)
+    lines_to_keep = sorted(lines_to_keep)
+    lines_to_keep.insert(0, datetime.datetime.now())
     if len(lines_to_keep) > 25000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
             f_out.writelines(lines_to_keep)
