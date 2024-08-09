@@ -8,6 +8,7 @@ import tqdm
 lines_to_keep = []
 reject_list = []
 lines_list = []
+lines_to_ = []
 
 
 def fetch_url(url):
@@ -36,8 +37,19 @@ def process_filter(url):
             if ((line.startswith('||') and line.endswith('^') and '/' not in line and '*' not in line) or \
                line.startswith('127.0.0.1')) and 'localhost' not in line:
                 line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
-                lines_to_keep.append(line)
-        return lines_to_keep
+                lines_to_.append(line)
+        return lines_to_
+
+def process_filter2(url):
+    file_contents = fetch_url(url)
+    if file_contents:
+        for line in file_contents.splitlines():
+            line = line.strip()
+            if line.startswith('/'):
+                lines_to_1.append(line)
+            elif line.startswith('||') and line.endswith('^') and '*' in line and '@' not in line and '!' not in line:
+                line = line.replace('||', '').replace('^', '')
+                lines_to_2.append(line)                
 
 def check_dns_resolution(domain):
     try:
@@ -61,15 +73,16 @@ def filter_domains(lines):
     for i in range(1, len(lines)):
         if not any(('.' + line) in lines[i] for line in unique_lines):
             unique_lines.append(lines[i])
-    unique_lines = sorted(unique_lines)
     return unique_lines
 
-def address(sock):
+def address(sock, s2):
     add = []
     now = datetime.datetime.now()
-    add.append('{}.{}.{}.test\n'.format(now.month, now.day, now.hour))
-    for line in sock:
+    add.append('!{}\n'.format(now))
+    for line in s2:
         add.append('%s\n' % line)
+    for line in sock:
+        add.append('||%s^\n' % line)
     return add
 
 def process_domains(domain_list):
@@ -86,7 +99,7 @@ def process_domains(domain_list):
     return valid_domains
 
 urls = 'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-hosts.txt'
-lines_to_keep = process_filter(urls)
+Rule_hosts = process_filter(urls)
 
 url = 'https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/reject-list.txt'
 reject_list = fetch_url(url)
@@ -96,16 +109,27 @@ with open('/root/workspace/st/ad_j.txt', 'r') as file:
     for line in file:
         lines_list.append(line.strip())
 
-he_list = set(lines_to_keep) | set(reject_list) | set(lines_list)
+he_list = set(Rule_hosts) | set(reject_list) | set(lines_list)
 
 lines_to_keep = list(he_list)
 
 output_file = '/root/workspace/st/ad.txt'
 if lines_to_keep:
     valid_domains = process_domains(lines_to_keep)
-    lines_to_keep = address(filter_domains(valid_domains))
+    lines_to_keep = filter_domains(valid_domains)
+    urls = [
+        'https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt',
+        'https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-easylist.txt'
+    ]
+    lines_to_1 = []
+    lines_to_2 = []
+    for url in urls:
+        process_filter2(url)
+    lines_to_keep = lines_to_keep + lines_to_2
+    lines_to_keep = sorted(lines_to_keep)
+    lines_to_keep = address(lines_to_keep, lines_to_1)
 
-    if len(lines_to_keep) > 20000:
+    if len(lines_to_keep) > 25000:
         with open(output_file, 'w', encoding='utf-8') as f_out:
             f_out.writelines(lines_to_keep)
         print('共%s条AD' % len(lines_to_keep))
