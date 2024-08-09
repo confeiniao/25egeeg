@@ -67,9 +67,9 @@ def filter_domains(lines):
 def address(sock):
     add = []
     now = datetime.datetime.now()
-    add.append('domain:{}.{}.{}.test\n'.format(now.month, now.day, now.hour))
+    add.append('{}.{}.{}.test\n'.format(now.month, now.day, now.hour))
     for line in sock:
-        add.append('domain:%s\n' % line)
+        add.append('%s\n' % line)
     return add
 
 def process_domains(domain_list):
