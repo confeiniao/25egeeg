@@ -51,7 +51,7 @@ def run_command(args, timeout):
         print(f"Process with args {args} failed with exit code {e.returncode}.")
         return e.returncode
 
-def huoqu()
+def huoqu():
     # 获取当前目录下所有CSV文件路径
     csv_files = glob.glob('./*.csv')
 
