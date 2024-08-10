@@ -7,7 +7,7 @@ import concurrent.futures
 import time
 
 # 设定常量
-working_directory = "/root/cs"
+working_directory = "/root/workspace/st/zfs"
 filename = "CloudflareST_linux_amd64.tar.gz"
 extract_path = os.path.join(working_directory, "CloudflareST")
 timeout = 6 * 60  # 6分钟超时
