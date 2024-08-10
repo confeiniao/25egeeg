@@ -7,7 +7,7 @@ import concurrent.futures
 import time
 
 # 设定常量
-working_directory = "/root/workspace/st/zfs"
+working_directory = "/root/tsc/st/zfs"
 filename = "CloudflareST_linux_amd64.tar.gz"
 extract_path = os.path.join(working_directory, "CloudflareST")
 timeout = 6 * 60  # 6分钟超时
@@ -50,20 +50,6 @@ def run_command(args, timeout):
         print(f"Process with args {args} failed with exit code {e.returncode}.")
         return e.returncode
 
-# 提取 A2 到 A4 行内容
-def extract_ips_from_csv(directory):
-    ips_set = set()
-    csv_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
-    for file in csv_files:
-        file_path = os.path.join(directory, file)
-        df = pd.read_csv(file_path, header=None)
-        for i in range(1, 4):
-            if i < len(df):
-                cell = df.iloc[i, 0]
-                if pd.notna(cell) and cell.strip():
-                    ips_set.add(cell.strip())
-    return list(ips_set)
-
 # 主程序
 def main():
     if not os.path.exists(working_directory):
@@ -105,8 +91,22 @@ def main():
                 print(f"Process ended with return code {return_code}.")
 
     # 提取并打印 IPs
-    ips_list = extract_ips_from_csv(working_directory)
-    print("Unique IPs:", ips_list)
+    csv_files = glob.glob('*.csv')
+
+    # 用于存储A列数据
+    data = []
+
+    for file in csv_files:
+        df = pd.read_csv(file)
+        if 'A' in df.columns:
+            # 提取包含4个点的行
+            filtered = df[df['A'].astype(str).str.count('.') == 3]
+            data.extend(filtered['A'].tolist())
+
+    # 去重并保存到变量IPS
+    IPS = list(set(data))
+
+    print(IPS)
 
 if __name__ == "__main__":
     main()
