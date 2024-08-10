@@ -11,7 +11,11 @@ working_directory = "/root/cs"
 filename = "CloudflareST_linux_amd64.tar.gz"
 extract_path = os.path.join(working_directory, "CloudflareST")
 timeout = 6 * 60  # 6分钟超时
-num_processes = 3
+num_processes = 20
+
+# 打印日志
+def log(message):
+    print(message)
 
 # 获取最新版本的下载链接
 def get_latest_release_url():
@@ -26,42 +30,53 @@ def get_latest_release_url():
 
 # 下载文件
 def download_file(url, path):
+    log(f"Downloading from {url}")
     response = requests.get(url, stream=True)
     response.raise_for_status()
     with open(path, "wb") as file:
         for chunk in response.iter_content(chunk_size=8192):
             file.write(chunk)
+    log(f"Download complete: {path}")
 
 # 解压文件并赋予执行权限
 def extract_and_set_permissions(tar_path, extract_path):
+    log(f"Extracting {tar_path} to {extract_path}")
     with tarfile.open(tar_path, "r:gz") as tar:
         tar.extractall(path=extract_path)
     os.chmod(os.path.join(extract_path, "CloudflareST"), 0o755)
+    log(f"Extraction complete and permissions set for {extract_path}")
 
 # 运行命令并监控
 def run_command(args, timeout):
     try:
+        log(f"Running command: {' '.join(args)}")
         result = subprocess.run(args, cwd=extract_path, timeout=timeout, check=True)
+        log(f"Command completed successfully with args: {' '.join(args)}")
         return result.returncode
     except subprocess.TimeoutExpired:
-        print(f"Process with args {args} timed out.")
+        log(f"Process with args {args} timed out.")
         return -1
     except subprocess.CalledProcessError as e:
-        print(f"Process with args {args} failed with exit code {e.returncode}.")
+        log(f"Process with args {args} failed with exit code {e.returncode}.")
         return e.returncode
 
 # 提取 A2 到 A4 行内容
 def extract_ips_from_csv(directory):
     ips_set = set()
     csv_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
+    log(f"Found CSV files: {csv_files}")
     for file in csv_files:
         file_path = os.path.join(directory, file)
-        df = pd.read_csv(file_path, header=None)
-        for i in range(1, 4):
-            if i < len(df):
-                cell = df.iloc[i, 0]
-                if pd.notna(cell) and cell.strip():
-                    ips_set.add(cell.strip())
+        try:
+            df = pd.read_csv(file_path, header=None)
+            log(f"Data from file {file_path}:\n{df.head()}")
+            for i in range(1, 4):
+                if i < len(df):
+                    cell = df.iloc[i, 0]
+                    if pd.notna(cell) and cell.strip():
+                        ips_set.add(cell.strip())
+        except Exception as e:
+            log(f"Error processing file {file_path}: {e}")
     return list(ips_set)
 
 # 主程序
@@ -71,7 +86,7 @@ def main():
 
     # 获取最新版本的下载链接
     latest_url = get_latest_release_url()
-    print(f"Downloading from {latest_url}")
+    log(f"Latest release URL: {latest_url}")
 
     # 下载文件
     tar_path = os.path.join(working_directory, filename)
@@ -98,15 +113,15 @@ def main():
         for future in concurrent.futures.as_completed(futures):
             return_code = future.result()
             if return_code == 0:
-                print("Process completed successfully.")
+                log("Process completed successfully.")
             elif return_code == -1:
-                print("Process timed out.")
+                log("Process timed out.")
             else:
-                print(f"Process ended with return code {return_code}.")
+                log(f"Process ended with return code {return_code}.")
 
     # 提取并打印 IPs
     ips_list = extract_ips_from_csv(working_directory)
-    print("Unique IPs:", ips_list)
+    log(f"Unique IPs: {ips_list}")
 
 if __name__ == "__main__":
     main()
