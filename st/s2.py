@@ -5,6 +5,7 @@ import subprocess
 import pandas as pd
 import concurrent.futures
 import time
+import glob
 
 # 设定常量
 working_directory = "/root/tsc/st/zfs"
@@ -50,6 +51,102 @@ def run_command(args, timeout):
         print(f"Process with args {args} failed with exit code {e.returncode}.")
         return e.returncode
 
+def huoqu()
+    # 获取当前目录下所有CSV文件路径
+    csv_files = glob.glob('./*.csv')
+
+    # 用于存储IP地址数据
+    data = []
+
+    for file in csv_files:
+        try:
+            with open(file, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
+            
+            # 提取列名
+            headers = lines[0].strip().split(',')
+            #print(f"Headers: {headers}")
+
+            if 'IP 地址' in headers:
+                ip_index = headers.index('IP 地址')
+                
+                # 处理数据行
+                for line in lines[1:]:
+                    columns = line.strip().split(',')
+                    if len(columns) > ip_index:
+                        value = columns[ip_index]
+                        if value.count('.') == 3:  # IP 地址应当有3个点
+                            data.append(value)
+        except Exception as e:
+            print(f"Error reading {file}: {e}")
+
+    # 去重并保存到变量IPS
+    IPS = list(set(data))
+
+
+    print(IPS)
+
+
+    # 保存查询结果的列表
+    IPSS = []
+
+    # API的基本URL
+    api_url = "https://ip100.info/ipaddr?ip="
+
+    xl = 1
+    # 遍历IP地址列表
+    for ip in IPS:
+        try:
+            # 构建请求URL
+            response = requests.get(api_url + ip)
+            response.raise_for_status()  # 确保请求成功
+            data = response.json()
+            data_str = json.dumps(data, ensure_ascii=False)
+            # 检查是否为正常返回
+            if "error" in data:
+                # 异常返回，直接保存IP地址
+                IPSS.append('%s:443#自选IP' % ip)
+            else:
+                # 正常返回，构建结果字符串
+                country = data.get("country", "")
+
+                if "美国" in data_str:
+                    result = f"{ip}:443#--{xl}--US-自选IP"
+                elif "香港" in data_str:
+                    result = f"{ip}:443#--{xl}--CN-HK-自选IP"
+                elif "台湾" in data_str:
+                    result = f"{ip}:443#--{xl}--CN-TW-自选IP"
+                elif "日本" in data_str:
+                    result = f"{ip}:443#--{xl}--JP-自选IP"
+                else:
+                    result = f"{ip}:443#--{xl}--{country}-自选IP"
+                    
+                IPSS.append(result)
+        except requests.RequestException as e:
+            # 处理请求错误
+            print(f"Request error for IP {ip}: {e}")
+            IPSS.append(ip)
+        except json.JSONDecodeError as e:
+            # 处理JSON解析错误
+            print(f"JSON decode error for IP {ip}: {e}")
+            IPSS.append(ip)
+        xl += 1
+    print("Results:")
+    print(IPSS)
+
+    # 文件路径
+    file_path = '/root/workspace/st/yx.txt'
+
+    try:
+        # 打开文件进行写入操作
+        with open(file_path, 'w', encoding='utf-8') as file:
+            for line in IPSS:
+                file.write(line + '\n')  # 写入每一行内容并换行
+
+        print(f"Data successfully written to {file_path}")
+    except Exception as e:
+        print(f"An error occurred while writing to the file: {e}")
+
 # 主程序
 def main():
     if not os.path.exists(working_directory):
@@ -90,23 +187,8 @@ def main():
             else:
                 print(f"Process ended with return code {return_code}.")
 
-    # 提取并打印 IPs
-    csv_files = glob.glob('*.csv')
-
-    # 用于存储A列数据
-    data = []
-
-    for file in csv_files:
-        df = pd.read_csv(file)
-        if 'A' in df.columns:
-            # 提取包含4个点的行
-            filtered = df[df['A'].astype(str).str.count('.') == 3]
-            data.extend(filtered['A'].tolist())
-
-    # 去重并保存到变量IPS
-    IPS = list(set(data))
-
-    print(IPS)
+    # 获取当前目录下所有CSV文件路径
+    huoqu()
 
 if __name__ == "__main__":
     main()
