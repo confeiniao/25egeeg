@@ -11,7 +11,7 @@ working_directory = "/root/cs"
 filename = "CloudflareST_linux_amd64.tar.gz"
 extract_path = os.path.join(working_directory, "CloudflareST")
 timeout = 6 * 60  # 6分钟超时
-num_processes = 20
+num_processes = 3
 
 # 获取最新版本的下载链接
 def get_latest_release_url():
