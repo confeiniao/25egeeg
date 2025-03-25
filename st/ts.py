@@ -16,7 +16,7 @@ def fetch_url(url):
     max_retries = 3
     retries = 0
     if 'github' in url:
-        url = 'https://ai.acyun.us.kg/' + url
+        url = 'https://z58x.pages.dev/' + url
     while retries < max_retries:
         try:
             response = requests.get(url)
@@ -24,8 +24,8 @@ def fetch_url(url):
             return response.text
         except requests.exceptions.RequestException as e:
             retries += 1
-            if retries == max_retries - 1:
-                url = url.replace('https://ai.acyun.us.kg/', '')
+            if retries == max_retries - 2:
+                url = url.replace('https://z58x.pages.dev/', '')
     return None
 
 def process_filter(url):
