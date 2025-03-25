@@ -33,9 +33,9 @@ def process_filter(url):
     if file_contents:
         for line in file_contents.splitlines():
             line = line.strip()
-            if ((line.startswith('||') and line.endswith('^') and '/' not in line and '*' not in line) or \
+            if ((line.startswith('0.0.0.0') and '/' not in line and '*' not in line) or \
                line.startswith('127.0.0.1')) and 'localhost' not in line:
-                line = line.replace('||', '').replace('^', '').replace('127.0.0.1', '').replace(' ', '')
+                line = line.replace('0.0.0.0', '').replace('127.0.0.1', '').replace(' ', '')
                 lines_to_.append(line)
         return lines_to_
 
