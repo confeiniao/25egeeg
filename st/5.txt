@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>股市热门榜单 - 实时行情</title>
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+  <!-- 引入外部资源 -->
+  <script src="tailwindcss.js"></script>
+  <link href="font-awesome.min.css" rel="stylesheet">
+  <script src="chart.umd.min.js"></script>
+  <link href="googleapis.css" rel="stylesheet">
+  
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1E3A8A',
+            secondary: '#3B82F6',
+            rise: '#EF4444',
+            fall: '#10B981',
+            neutral: '#1F2937',
+            'neutral-light': '#6B7280',
+            'tag-bg': '#EEF2FF',
+            'tag-text': '#3B82F6',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto { content-visibility: auto; }
+      .scrollbar-hide {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .stock-item-hover { @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1; }
+      .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+      .rank-up { @apply text-rise; }
+      .rank-down { @apply text-fall; }
+      .skeleton { @apply bg-gray-200 animate-pulse rounded; }
+      .expandable-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+      }
+      .expandable-content.active {
+        max-height: 1000px;
+        transition: max-height 0.5s ease-in;
+      }
+      .concept-active { @apply bg-primary text-white; }
+      .touch-friendly { @apply min-h-[44px] min-w-[44px] flex items-center justify-center; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-inter text-neutral min-h-screen">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50 transition-all duration-300" id="main-header">
+    <div class="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-line-chart text-primary text-2xl"></i>
+        <h1 class="text-xl font-bold text-primary">股市热榜</h1>
+      </div>
+      
+      <div class="flex items-center space-x-1 md:space-x-4 mt-2 md:mt-0">
+        <button class="px-3 py-1.5 text-sm rounded-md bg-primary text-white">A股</button>
+        <button class="px-3 py-1.5 text-sm rounded-md hover:bg-gray-100 transition">港股</button>
+        <button class="px-3 py-1.5 text-sm rounded-md hover:bg-gray-100 transition">美股</button>
+      </div>
+      
+      <div class="flex items-center space-x-3 mt-2 md:mt-0">
+        <button class="p-2 rounded-full hover:bg-gray-100 transition relative touch-friendly">
+          <i class="fa fa-bell-o text-neutral-light"></i>
+          <span class="absolute top-1 right-1 w-2 h-2 bg-rise rounded-full"></span>
+        </button>
+        <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden touch-friendly">
+          <img src="user.png" alt="用户头像" class="w-full h-full object-cover">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 市场状态和时间 -->
+  <div class="bg-neutral text-white py-2">
+    <div class="container mx-auto px-4 flex flex-wrap justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center">
+          <span class="inline-block w-2 h-2 bg-rise rounded-full mr-2 animate-pulse"></span>
+          <span>市场交易中</span>
+        </div>
+        <span id="current-time">2025-08-05 10:30:25</span>
+      </div>
+      <div class="text-sm text-gray-300 mt-1 md:mt-0 truncate">
+        上证指数: <span class="text-rise">3,286.45 +0.87%</span> | 深证成指: <span class="text-rise">11,527.32 +1.23%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主要内容区 -->
+  <main class="container mx-auto px-4 py-6">
+    <!-- 榜单类型切换 -->
+    <div class="bg-white rounded-xl shadow-sm p-3 mb-6">
+      <div class="flex overflow-x-auto scrollbar-hide space-x-1 md:space-x-3 pb-2">
+        <button class="whitespace-nowrap px-4 py-2 rounded-lg bg-primary text-white font-medium" data-type="preferred">
+          <i class="fa fa-trophy mr-1"></i> 优选榜
+        </button>
+        <button class="whitespace-nowrap px-4 py-2 rounded-lg hover:bg-gray-100 transition font-medium" data-type="hour&list_type=normal">
+          <i class="fa fa-clock-o mr-1"></i> 小时榜
+        </button>
+        <button class="whitespace-nowrap px-4 py-2 rounded-lg hover:bg-gray-100 transition font-medium" data-type="day&list_type=normal">
+          <i class="fa fa-sun-o mr-1"></i> 日榜
+        </button>
+        <button class="whitespace-nowrap px-4 py-2 rounded-lg hover:bg-gray-100 transition font-medium" data-type="day&list_type=value">
+          <i class="fa fa-calendar mr-1"></i> 价投榜
+        </button>
+        <button class="whitespace-nowrap px-4 py-2 rounded-lg hover:bg-gray-100 transition font-medium" data-type="day&list_type=skyrocket">
+          <i class="fa fa-line-chart mr-1"></i> 飙升榜
+        </button>
+        <button class="whitespace-nowrap px-4 py-2 rounded-lg hover:bg-gray-100 transition font-medium" data-type="day&list_type=tech">
+          <i class="fa fa-star mr-1"></i> 技术榜
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 左侧：热门股票列表 -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+          <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+            <h2 class="text-lg font-bold">热门股票</h2>
+            <div class="flex items-center space-x-2">
+              <span class="text-sm text-neutral-light">更新于: <span id="update-time">--:--</span></span>
+              <button class="p-1 rounded-full hover:bg-gray-100 transition touch-friendly" id="refresh-btn">
+                <i class="fa fa-refresh text-neutral-light"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 概念筛选状态显示 -->
+          <div id="concept-filter-indicator" class="hidden px-4 py-2 bg-blue-50 text-primary text-sm">
+            <span>正在筛选: <span id="current-concept-name"></span></span>
+            <button id="clear-concept-filter" class="ml-2 text-primary hover:underline">
+              <i class="fa fa-times-circle"></i> 清除筛选
+            </button>
+          </div>
+          
+          <!-- 表头 -->
+          <div class="grid grid-cols-12 bg-gray-50 py-3 px-4 text-sm text-neutral-light font-medium">
+            <div class="col-span-1 sm:col-span-1">排名</div>
+            <div class="col-span-4 sm:col-span-3">股票名称</div>
+            <div class="col-span-3 sm:col-span-2 text-right">涨跌幅</div>
+            <div class="col-span-2 hidden md:block text-right">热度值</div>
+            <div class="col-span-2 hidden md:block text-right">排名变动</div>
+            <div class="col-span-4 sm:col-span-2 text-right">概念</div>
+          </div>
+          
+          <!-- 股票列表容器 -->
+          <div id="stock-list-container" class="divide-y divide-gray-100">
+            <div id="stock-list"><!-- 股票列表将通过JS生成 --></div>
+          </div>
+          
+          <!-- 加载更多 -->
+          <div class="p-4 text-center">
+            <button class="px-6 py-2.5 border border-gray-200 rounded-lg text-neutral-light hover:bg-gray-50 transition touch-friendly" id="load-more">
+              加载更多 <i class="fa fa-angle-down ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 右侧：市场概览和热门板块 -->
+      <div class="space-y-6">
+        <!-- 市场概览图表 -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+            <h2 class="text-lg font-bold">市场概览</h2>
+          </div>
+          <div class="h-64">
+            <img id="market-chart-image" src="" alt="股票分时行情图" class="w-full h-full object-contain">
+          </div>
+        </div>
+        
+        <!-- 热门概念板块 -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-gray-100">
+            <h2 class="text-lg font-bold">热门概念</h2>
+          </div>
+          <div id="hot-concepts" class="p-4 flex flex-wrap gap-2">
+            <!-- 加载状态 -->
+            <div class="skeleton h-8 w-32"></div>
+            <div class="skeleton h-8 w-28"></div>
+            <div class="skeleton h-8 w-36"></div>
+            <div class="skeleton h-8 w-24"></div>
+          </div>
+        </div>
+        
+        <!-- 涨跌幅分布 -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-gray-100">
+            <h2 class="text-lg font-bold">涨跌幅分布</h2>
+          </div>
+          <div class="p-4 h-48">
+            <canvas id="rise-fall-distribution-chart"></canvas>
+          </div>
+          <div class="px-4 pb-4 grid grid-cols-3 gap-2 text-center">
+            <div id="rise-count" class="p-2 bg-rise/10 rounded-lg">
+              <div class="text-rise font-medium">0</div>
+              <div class="text-xs text-neutral-light">上涨</div>
+            </div>
+            <div id="fall-count" class="p-2 bg-fall/10 rounded-lg">
+              <div class="text-fall font-medium">0</div>
+              <div class="text-xs text-neutral-light">下跌</div>
+            </div>
+            <div id="flat-count" class="p-2 bg-gray-100 rounded-lg">
+              <div class="text-neutral-light font-medium">0</div>
+              <div class="text-xs text-neutral-light">平盘</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 热门话题 -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-gray-100">
+            <h2 class="text-lg font-bold">热门话题</h2>
+          </div>
+          <div id="hot-topics" class="divide-y divide-gray-100">
+            <!-- 加载状态 -->
+            <div class="p-3">
+              <div class="skeleton h-6 w-4/5"></div>
+            </div>
+            <div class="p-3">
+              <div class="skeleton h-6 w-3/4"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 错误提示 -->
+  <div id="error-toast" class="fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 flex items-center z-50">
+    <i class="fa fa-exclamation-circle mr-2"></i>
+    <span id="error-message">加载数据失败</span>
+  </div>
+
+  <!-- 页脚 -->
+  <footer class="bg-neutral text-white mt-12">
+    <div class="container mx-auto px-4 py-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <div class="flex items-center space-x-2 mb-4">
+            <i class="fa fa-line-chart text-2xl"></i>
+            <h3 class="text-lg font-bold">股市热榜</h3>
+          </div>
+          <p class="text-gray-400 text-sm">提供实时股票行情、热门榜单和市场分析，助您把握投资机会。</p>
+        </div>
+        
+        <div>
+          <h4 class="font-semibold mb-4">快速链接</h4>
+          <ul class="space-y-2 text-gray-400 text-sm">
+            <li><a href="#" class="hover:text-white transition">行情中心</a></li>
+            <li><a href="#" class="hover:text-white transition">财经新闻</a></li>
+            <li><a href="#" class="hover:text-white transition">投资学院</a></li>
+            <li><a href="#" class="hover:text-white transition">数据中心</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 class="font-semibold mb-4">产品服务</h4>
+          <ul class="space-y-2 text-gray-400 text-sm">
+            <li><a href="#" class="hover:text-white transition">行情软件</a></li>
+            <li><a href="#" class="hover:text-white transition">交易服务</a></li>
+            <li><a href="#" class="hover:text-white transition">投资组合</a></li>
+            <li><a href="#" class="hover:text-white transition">市场分析</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 class="font-semibold mb-4">联系我们</h4>
+          <ul class="space-y-2 text-gray-400 text-sm">
+            <li class="flex items-center"><i class="fa fa-envelope-o mr-2"></i> support@stockexample.com</li>
+            <li class="flex items-center"><i class="fa fa-phone mr-2"></i> 400-123-4567</li>
+          </ul>
+          <div class="flex space-x-4 mt-4">
+            <a href="#" class="text-gray-400 hover:text-white transition touch-friendly"><i class="fa fa-weibo text-xl"></i></a>
+            <a href="#" class="text-gray-400 hover:text-white transition touch-friendly"><i class="fa fa-wechat text-xl"></i></a>
+            <a href="#" class="text-gray-400 hover:text-white transition touch-friendly"><i class="fa fa-twitter text-xl"></i></a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-500 text-sm">
+        <p>© 2025 股市热榜. 保留所有权利.</p>
+        <p class="mt-2 text-xs">免责声明：本内容仅供参考，不构成投资建议，以上市公司公告为准</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script>
+    // API地址与全局变量
+    const API_BASE_URL = 'https://dq.10jqka.com.cn/fuyao/hot_list_data/out/hot_list/v1/stock';
+    const HOT_TOPICS_API = 'https://t.10jqka.com.cn/lgt/rostrum/topic/hot/front/search?page=1&page_size=30';
+    let currentListType = 'preferred';
+    let stockData = { stock_list: [], hour_list: [], day_list: [] };
+    let expandedStockCode = null;
+    let currentFilterConcept = null;
+    let currentChartStockCode = null;
+    
+    // 显示错误提示
+    function showError(message) {
+      const errorToast = document.getElementById('error-toast');
+      const errorMessage = document.getElementById('error-message');
+      
+      errorMessage.textContent = message;
+      errorToast.classList.remove('translate-x-full');
+      setTimeout(() => errorToast.classList.add('translate-x-full'), 3000);
+    }
+    
+    // 创建骨架屏元素
+    function createSkeletonRow() {
+      return `
+        <div class="grid grid-cols-12 py-3 px-4 items-center">
+          <div class="col-span-1 sm:col-span-1 skeleton h-6 w-6"></div>
+          <div class="col-span-4 sm:col-span-3">
+            <div class="skeleton h-5 w-24 mb-2"></div>
+            <div class="skeleton h-4 w-16"></div>
+          </div>
+          <div class="col-span-3 sm:col-span-2 text-right">
+            <div class="skeleton h-5 w-16 ml-auto"></div>
+          </div>
+          <div class="col-span-2 hidden md:block text-right">
+            <div class="skeleton h-5 w-16 ml-auto"></div>
+          </div>
+          <div class="col-span-2 hidden md:block text-right">
+            <div class="skeleton h-5 w-12 ml-auto"></div>
+          </div>
+          <div class="col-span-4 sm:col-span-2 text-right">
+            <div class="flex justify-end space-x-1 flex-wrap">
+              <div class="skeleton h-5 w-16"></div>
+              ${Math.random() > 0.5 ? '<div class="skeleton h-5 w-16"></div>' : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // 获取股票数据
+    async function fetchStockData(type = 'preferred') {
+      // 显示加载状态
+      document.getElementById('stock-list').innerHTML = createSkeletonRow() + createSkeletonRow();
+      
+      try {
+        if (type === 'preferred') {
+          // 获取小时榜和日榜数据
+          const [hourData, dayData] = await Promise.all([
+            fetch(`${API_BASE_URL}?stock_type=a&type=hour&list_type=normal`).then(r => r.json()),
+            fetch(`${API_BASE_URL}?stock_type=a&type=day&list_type=normal`).then(r => r.json())
+          ]);
+          
+          if (hourData.status_code !== 0 || dayData.status_code !== 0) {
+            throw new Error('获取榜单数据失败');
+          }
+          
+          stockData.hour_list = hourData.data.stock_list || [];
+          stockData.day_list = dayData.data.stock_list || [];
+          
+          // 生成优选榜数据
+          const top50HourStocks = [...stockData.hour_list]
+            .sort((a, b) => a.order - b.order).slice(0, 50);
+          const dayStockCodes = new Set(stockData.day_list.map(stock => stock.code));
+          stockData.stock_list = top50HourStocks
+            .filter(stock => dayStockCodes.has(stock.code))
+            .map((stock, index) => ({ ...stock, order: index + 1 }));
+        } else {
+          // 获取单一榜单数据
+          const response = await fetch(`${API_BASE_URL}?stock_type=a&type=${type}`);
+          const data = await response.json();
+          
+          if (data.status_code !== 0) {
+            throw new Error(data.status_msg || '获取数据失败');
+          }
+          
+          stockData.stock_list = data?.data?.stock_list || [];
+          
+          // 保存对应榜单数据
+          if (type === 'hour&list_type=normal') stockData.hour_list = stockData.stock_list;
+          else if (type === 'day&list_type=normal') stockData.day_list = stockData.stock_list;
+        }
+        
+        // 更新界面
+        document.querySelector('.font-bold').textContent = `热门股票${getListTypeName(type)}`;
+        const now = new Date();
+        document.getElementById('update-time').textContent = 
+          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        renderStockList();
+        renderHotConcepts();
+        calculateRiseFallDistribution();
+        fetchHotTopics();
+        if (stockData.stock_list.length > 0) {
+          updateMarketChart(stockData.stock_list[0].code);
+        }
+        
+        return stockData;
+        
+      } catch (error) {
+        console.error('获取股票数据失败:', error);
+        showError('获取数据失败，请稍后重试');
+        document.getElementById('stock-list').innerHTML = `
+          <div class="p-6 text-center text-neutral-light">
+            <i class="fa fa-exclamation-triangle text-2xl mb-2"></i>
+            <p>无法加载数据，请检查网络连接或稍后重试</p>
+          </div>
+        `;
+        return null;
+      }
+    }
+    
+    // 获取热门话题数据
+    async function fetchHotTopics() {
+      try {
+        const response = await fetch(HOT_TOPICS_API);
+        const data = await response.json();
+        
+        if (data.status_code !== 0) {
+          throw new Error(data.status_msg || '获取热门话题失败');
+        }
+        
+        renderHotTopics(data.result.list);
+      } catch (error) {
+        console.error('获取热门话题失败:', error);
+        renderFallbackHotTopics();
+      }
+    }
+    
+    // 获取榜单类型名称
+    function getListTypeName(type) {
+      const typeNames = {
+        'preferred': '优选榜',
+        'hour&list_type=normal': '小时榜',
+        'day&list_type=normal': '日榜',
+        'day&list_type=value': '价投榜',
+        'day&list_type=skyrocket': '飙升榜',
+        'day&list_type=tech': '技术榜'
+      };
+      return typeNames[type] || '榜单';
+    }
+    
+    // 更新当前时间
+    function updateCurrentTime() {
+      const now = new Date();
+      const [year, month, day, hours, minutes, seconds] = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+        String(now.getHours()).padStart(2, '0'),
+        String(now.getMinutes()).padStart(2, '0'),
+        String(now.getSeconds()).padStart(2, '0')
+      ];
+      document.getElementById('current-time').textContent = 
+        `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+    
+    // 初始化时间并每秒更新
+    updateCurrentTime();
+    setInterval(updateCurrentTime, 1000);
+    
+    // 渲染股票列表
+    function renderStockList() {
+      if (!stockData?.stock_list) return;
+      
+      const stockListElement = document.getElementById('stock-list');
+      stockListElement.innerHTML = '';
+      
+      // 筛选并排序股票
+      let sortedStocks = [...stockData.stock_list].sort((a, b) => a.order - b.order);
+      
+      if (currentFilterConcept) {
+        sortedStocks = sortedStocks.filter(stock => 
+          stock.tag?.concept_tag?.includes(currentFilterConcept)
+        );
+        document.getElementById('concept-filter-indicator').classList.remove('hidden');
+        document.getElementById('current-concept-name').textContent = currentFilterConcept;
+      } else {
+        document.getElementById('concept-filter-indicator').classList.add('hidden');
+      }
+      
+      sortedStocks.forEach(stock => {
+        const riseAndFall = stock.rise_and_fall !== null && stock.rise_and_fall !== undefined ? Number(stock.rise_and_fall) : 0;
+        const isRise = riseAndFall >= 0;
+        const trendClass = isRise ? 'text-rise' : 'text-fall';
+        const trendIcon = isRise ? 'fa-caret-up' : 'fa-caret-down';
+        
+        // 排名变动
+        let rankChangeHtml = '';
+        if (stock.hot_rank_chg > 0) rankChangeHtml = `<i class="fa fa-caret-up rank-up"></i> ${stock.hot_rank_chg}`;
+        else if (stock.hot_rank_chg < 0) rankChangeHtml = `<i class="fa fa-caret-down rank-down"></i> ${Math.abs(stock.hot_rank_chg)}`;
+        else rankChangeHtml = `<i class="fa fa-minus text-neutral-light"></i> 0`;
+        
+        // 概念标签
+        let conceptTagsHtml = '';
+        if (stock.tag?.concept_tag?.length) {
+          const tagsToShow = window.innerWidth < 640 ? 
+            stock.tag.concept_tag.slice(0, 1) : stock.tag.concept_tag.slice(0, 2);
+            
+          tagsToShow.forEach(tag => {
+            conceptTagsHtml += `<span class="text-xs bg-tag-bg text-tag-text px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${tag}</span>`;
+          });
+          
+          if (stock.tag.concept_tag.length > tagsToShow.length) {
+            conceptTagsHtml += `<span class="text-xs bg-gray-100 text-neutral-light px-1.5 py-0.5 rounded mb-1 inline-block">+${stock.tag.concept_tag.length - tagsToShow.length}</span>`;
+          }
+        }
+        
+        // 人气标签
+        const popularityTagHtml = stock.tag?.popularity_tag ? 
+          `<span class="text-xs bg-rise/10 text-rise px-1.5 py-0.5 rounded ml-1">${stock.tag.popularity_tag}</span>` : '';
+        
+        // 展开/收起图标
+        const expandIcon = expandedStockCode === stock.code ? 
+          '<i class="fa fa-angle-up ml-1"></i>' : '<i class="fa fa-angle-down ml-1"></i>';
+        
+        // 创建股票项
+        const stockContainer = document.createElement('div');
+        stockContainer.className = 'stock-container';
+        stockContainer.dataset.code = stock.code;
+        
+        const stockItem = document.createElement('div');
+        stockItem.className = `grid grid-cols-12 py-3 px-4 items-center stock-item-hover cursor-pointer ${expandedStockCode === stock.code ? 'bg-blue-50' : ''}`;
+        stockItem.dataset.code = stock.code;
+        
+        stockItem.innerHTML = `
+          <div class="col-span-1 sm:col-span-1 font-medium">
+            ${stock.order <= 3 ? 
+              `<span class="inline-block w-6 h-6 rounded-full flex items-center justify-center text-white text-xs ${
+                stock.order === 1 ? 'bg-yellow-500' : 
+                stock.order === 2 ? 'bg-gray-400' : 'bg-orange-600'
+              }">${stock.order}</span>` : 
+              stock.order
+            }
+          </div>
+          <div class="col-span-4 sm:col-span-3">
+            <div class="flex flex-col">
+              <span class="font-medium">${stock.name} ${expandIcon}<span class="block md:inline">${popularityTagHtml}</span></span>
+              <span class="text-xs text-neutral-light">${stock.code} ${getMarketName(stock.market)}</span>
+            </div>
+          </div>
+          <div class="col-span-3 sm:col-span-2 text-right ${trendClass} font-medium">
+            <i class="fa ${trendIcon}"></i> ${riseAndFall.toFixed(2)}%
+          </div>
+          <div class="col-span-2 hidden md:block text-right text-neutral-light">${formatNumber(stock.rate)}</div>
+          <div class="col-span-2 hidden md:block text-right">${rankChangeHtml}</div>
+          <div class="col-span-4 sm:col-span-2 text-right">
+            <div class="flex flex-wrap justify-end">${conceptTagsHtml}</div>
+          </div>
+        `;
+        
+        // 添加点击事件
+        stockItem.addEventListener('click', () => {
+          toggleStockAnalysis(stock.code);
+          updateMarketChart(stock.code);
+          if (window.innerWidth < 768) {
+            setTimeout(() => stockItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300);
+          }
+        });
+        
+        // 创建分析内容容器
+        const analysisContainer = document.createElement('div');
+        analysisContainer.className = `stock-analysis expandable-content ${expandedStockCode === stock.code ? 'active' : ''}`;
+        analysisContainer.dataset.code = stock.code;
+        
+        if (expandedStockCode === stock.code) {
+          renderStockAnalysisContent(analysisContainer, stock);
+        }
+        
+        stockContainer.appendChild(stockItem);
+        stockContainer.appendChild(analysisContainer);
+        stockListElement.appendChild(stockContainer);
+      });
+    }
+    
+    // 切换股票分析的展开/收起状态
+    function toggleStockAnalysis(code) {
+      expandedStockCode = expandedStockCode === code ? null : code;
+      updateStockAnalysisVisibility();
+    }
+    
+    // 更新股票分析内容的可见性
+    function updateStockAnalysisVisibility() {
+      document.querySelectorAll('.stock-analysis').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.stock-item-hover').forEach(el => el.classList.remove('bg-blue-50'));
+      document.querySelectorAll('.stock-item-hover .fa-angle-up').forEach(el => {
+        el.className = 'fa fa-angle-down ml-1';
+      });
+      
+      if (expandedStockCode) {
+        const analysisEl = document.querySelector(`.stock-analysis[data-code="${expandedStockCode}"]`);
+        const stockItemEl = document.querySelector(`.stock-item-hover[data-code="${expandedStockCode}"]`);
+        
+        if (analysisEl) {
+          analysisEl.classList.add('active');
+          const stock = stockData.stock_list.find(s => s.code === expandedStockCode);
+          if (stock && !analysisEl.innerHTML) {
+            renderStockAnalysisContent(analysisEl, stock);
+          }
+        }
+        
+        if (stockItemEl) {
+          stockItemEl.classList.add('bg-blue-50');
+          const iconEl = stockItemEl.querySelector('.fa-angle-down');
+          if (iconEl) iconEl.className = 'fa fa-angle-up ml-1';
+        }
+      }
+    }
+    
+    // 处理URL
+    function processUrl(url) {
+      return url ? url.replace(/\^mode=new$/, '') : '#';
+    }
+    
+    // 渲染股票分析内容
+    function renderStockAnalysisContent(container, stock) {
+      let analysisHtml = `
+        <div class="p-4 border-t border-gray-100">
+          <div class="border-b border-gray-100 pb-4 mb-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-bold">${stock.name} (${stock.code}) ${getMarketName(stock.market)}</h3>
+              <div class="${stock.rise_and_fall >= 0 ? 'text-rise' : 'text-fall'} font-bold text-lg">
+                ${stock.rise_and_fall >= 0 ? '+' : ''}${stock.rise_and_fall.toFixed(2)}%
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-2">
+      `;
+      
+      // 概念标签
+      if (stock.tag?.concept_tag?.length) {
+        stock.tag.concept_tag.forEach(tag => {
+          analysisHtml += `<span class="text-xs bg-tag-bg text-tag-text px-2 py-1 rounded">${tag}</span>`;
+        });
+      }
+      
+      // 人气标签
+      if (stock.tag?.popularity_tag) {
+        analysisHtml += `<span class="text-xs bg-rise/10 text-rise px-2 py-1 rounded">${stock.tag.popularity_tag}</span>`;
+      }
+      
+      analysisHtml += `</div></div>`;
+      
+      // 分析内容
+      if (stock.analyse_title || stock.analyse) {
+        analysisHtml += `
+          <div class="mb-4">
+            <h4 class="font-medium mb-2 text-primary">${stock.analyse_title || '公司分析'}</h4>
+            <div class="text-sm text-neutral-light whitespace-pre-line leading-relaxed">
+              ${stock.analyse || '暂无详细分析数据'}
+            </div>
+          </div>
+        `;
+      } else {
+        analysisHtml += `
+          <div class="text-center text-neutral-light py-6">
+            <p>暂无该股票的详细分析数据</p>
+          </div>
+        `;
+      }
+      
+      // 相关话题
+      if (stock.topic?.title) {
+        const processedUrl = processUrl(stock.topic.ios_jump_url);
+        analysisHtml += `
+          <div class="bg-blue-50 p-3 rounded-lg">
+            <h4 class="font-medium mb-2">相关话题</h4>
+            <a href="${processedUrl}" target="_blank" class="text-secondary hover:underline text-sm flex items-center">
+              ${stock.topic.title} <i class="fa fa-angle-right ml-1"></i>
+            </a>
+          </div>
+        `;
+      }
+      
+      analysisHtml += `</div>`;
+      container.innerHTML = analysisHtml;
+    }
+    
+    // 获取市场名称
+    function getMarketName(marketCode) {
+      const markets = { 17: '沪A', 33: '深A' };
+      return markets[marketCode] || '京';
+    }
+    
+    // 格式化数字
+    function formatNumber(num) {
+      return Number(num).toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+    }
+    
+    // 提取并渲染热门概念
+    function renderHotConcepts() {
+      if (!stockData?.stock_list) return;
+      
+      const conceptsElement = document.getElementById('hot-concepts');
+      conceptsElement.innerHTML = '';
+      
+      // 收集所有概念并计数
+      const conceptCounts = {};
+      stockData.stock_list.forEach(stock => {
+        if (stock.tag?.concept_tag) {
+          stock.tag.concept_tag.forEach(concept => {
+            conceptCounts[concept] = (conceptCounts[concept] || 0) + 1;
+          });
+        }
+      });
+      
+      // 排序并获取前10个热门概念
+      const sortedConcepts = Object.entries(conceptCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+      
+      // 添加"全部"选项
+      const allConceptTag = document.createElement('span');
+      allConceptTag.className = `bg-tag-bg text-tag-text px-3 py-1.5 rounded-full text-sm flex items-center cursor-pointer ${!currentFilterConcept ? 'concept-active' : ''} touch-friendly`;
+      allConceptTag.innerHTML = `全部 <span class="ml-1 bg-white text-xs px-1.5 py-0.5 rounded-full">${stockData.stock_list.length}</span>`;
+      allConceptTag.addEventListener('click', () => filterByConcept(null));
+      conceptsElement.appendChild(allConceptTag);
+      
+      // 渲染概念标签
+      sortedConcepts.forEach(concept => {
+        const conceptTag = document.createElement('span');
+        conceptTag.className = `bg-tag-bg text-tag-text px-3 py-1.5 rounded-full text-sm flex items-center cursor-pointer ${currentFilterConcept === concept.name ? 'concept-active' : ''} touch-friendly`;
+        conceptTag.innerHTML = `${concept.name} <span class="ml-1 bg-white text-xs px-1.5 py-0.5 rounded-full">${concept.count}</span>`;
+        conceptTag.addEventListener('click', () => {
+          filterByConcept(concept.name);
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        });
+        conceptsElement.appendChild(conceptTag);
+      });
+    }
+    
+    // 按概念筛选股票
+    function filterByConcept(conceptName) {
+      expandedStockCode = null;
+      currentFilterConcept = conceptName;
+      renderStockList();
+      renderHotConcepts();
+      calculateRiseFallDistribution();
+    }
+    
+    // 计算并渲染涨跌幅分布
+    function calculateRiseFallDistribution() {
+      if (!stockData?.stock_list) return;
+      
+      let [riseCount, fallCount, flatCount] = [0, 0, 0];
+      let stocksToAnalyze = [...stockData.stock_list];
+      
+      if (currentFilterConcept) {
+        stocksToAnalyze = stocksToAnalyze.filter(stock => 
+          stock.tag?.concept_tag?.includes(currentFilterConcept)
+        );
+      }
+      
+      stocksToAnalyze.forEach(stock => {
+        if (stock.rise_and_fall > 0) riseCount++;
+        else if (stock.rise_and_fall < 0) fallCount++;
+        else flatCount++;
+      });
+      
+      // 更新显示数字
+      document.getElementById('rise-count').querySelector('div:first-child').textContent = riseCount;
+      document.getElementById('fall-count').querySelector('div:first-child').textContent = fallCount;
+      document.getElementById('flat-count').querySelector('div:first-child').textContent = flatCount;
+      
+      // 更新图表
+      if (window.riseFallChart) {
+        window.riseFallChart.data.datasets[0].data = [riseCount, fallCount, flatCount];
+        window.riseFallChart.update();
+      }
+    }
+    
+    // 渲染热门话题
+    function renderHotTopics(topics) {
+      const topicsElement = document.getElementById('hot-topics');
+      topicsElement.innerHTML = '';
+      
+      if (!topics?.length) {
+        topicsElement.innerHTML = `<div class="p-4 text-center text-neutral-light">暂无热门话题</div>`;
+        return;
+      }
+      
+      // 显示前10个热门话题
+      topics.slice(0, 10).forEach((topic, index) => {
+        const topicItem = document.createElement('div');
+        topicItem.className = 'p-3 hover:bg-gray-50 transition';
+        
+        // 前三名样式
+        let rankStyle = index === 0 ? 'bg-yellow-500 text-white' : 
+                       index === 1 ? 'bg-gray-400 text-white' : 
+                       index === 2 ? 'bg-orange-600 text-white' : 'bg-gray-200 text-neutral';
+        
+        const processedUrl = processUrl(topic.topic_url);
+        topicItem.innerHTML = `
+          <a href="${processedUrl}" target="_blank" class="flex items-center">
+            <span class="inline-block w-5 h-5 rounded-full flex items-center justify-center text-xs mr-2 ${rankStyle}">${index + 1}</span>
+            <div class="font-medium flex-1">${topic.title}</div>
+            <i class="fa fa-angle-right text-neutral-light"></i>
+          </a>
+          ${topic.subtitle ? `<div class="text-xs text-neutral-light mt-1 ml-7">${topic.subtitle}</div>` : ''}
+        `;
+        topicsElement.appendChild(topicItem);
+      });
+    }
+    
+    // 渲染备用热门话题
+    function renderFallbackHotTopics() {
+      const fallbackTopics = [
+        { title: "央行发布最新金融数据，市场反应积极", subtitle: "货币政策保持稳健中性", topic_url: "/news/1" },
+        { title: "新能源板块持续走强，多家企业发布利好消息", subtitle: "行业景气度不断提升", topic_url: "/news/2" },
+        { title: "半导体行业迎来新机遇，政策支持力度加大", subtitle: "国产化进程加速推进", topic_url: "/news/3" },
+        { title: "房地产市场政策调整，行业预期改善", subtitle: "多地出台稳楼市新举措", topic_url: "/news/4" },
+        { title: "消费板块回暖，龙头企业业绩亮眼", subtitle: "内需市场潜力逐步释放", topic_url: "/news/5" },
+        { title: "科技创新成为市场主线，多领域突破可期", subtitle: "政策加码支持实体经济", topic_url: "/news/6" },
+        { title: "医药行业迎来估值修复，长期投资价值显现", subtitle: "创新药研发加速推进", topic_url: "/news/7" },
+        { title: "碳中和目标下，绿色能源产业前景广阔", subtitle: "产业链上下游协同发展", topic_url: "/news/8" },
+        { title: "数字经济发展提速，相关板块备受关注", subtitle: "产业数字化转型加速", topic_url: "/news/9" },
+        { title: "高端制造升级，中国品牌走向世界", subtitle: "制造业竞争力持续提升", topic_url: "/news/10" }
+      ];
+      renderHotTopics(fallbackTopics);
+    }
+
+    // 更新市场概览图片
+    function updateMarketChart(code) {
+      if (!code) return;
+      currentChartStockCode = code;
+      const nidPrefix = code.startsWith('6') ? '1' : '0';
+      // API只支持当日分时图，固定imageType=r
+      document.getElementById('market-chart-image').src = 
+        `https://webquotepic.eastmoney.com/GetPic.aspx?imageType=r&type=&nid=${nidPrefix}.${code}`;
+    }
+
+    // 初始化涨跌幅分布图表
+    function initRiseFallDistributionChart() {
+      const ctx = document.getElementById('rise-fall-distribution-chart').getContext('2d');
+      
+      window.riseFallChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['上涨', '下跌', '平盘'],
+          datasets: [{
+            data: [0, 0, 0],
+            backgroundColor: ['#EF4444', '#10B981', '#9CA3AF'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: { position: 'bottom', labels: { padding: 15, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const label = ctx.label || '';
+                  const value = ctx.raw || 0;
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                  return `${label}: ${value} (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // 刷新数据功能
+    function refreshData() {
+      const refreshBtn = document.getElementById('refresh-btn');
+      refreshBtn.innerHTML = '<i class="fa fa-spinner fa-spin text-neutral-light"></i>';
+      expandedStockCode = null;
+      
+      fetchStockData(currentListType).finally(() => {
+        refreshBtn.innerHTML = '<i class="fa fa-refresh text-neutral-light"></i>';
+      });
+    }
+    
+    // 切换榜单类型
+    function setupListTypeSwitch() {
+      const typeButtons = document.querySelectorAll('[data-type]');
+      
+      typeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          typeButtons.forEach(btn => {
+            btn.classList.remove('bg-primary', 'text-white');
+            btn.classList.add('hover:bg-gray-100');
+          });
+          button.classList.add('bg-primary', 'text-white');
+          button.classList.remove('hover:bg-gray-100');
+          
+          currentListType = button.getAttribute('data-type');
+          currentFilterConcept = null;
+          expandedStockCode = null;
+          fetchStockData(currentListType);
+        });
+      });
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      // 初始化图表
+      initRiseFallDistributionChart();
+      
+      // 设置榜单类型切换
+      setupListTypeSwitch();
+      
+      // 绑定事件
+      document.getElementById('refresh-btn').addEventListener('click', refreshData);
+      document.getElementById('clear-concept-filter').addEventListener('click', () => filterByConcept(null));
+      
+      // 加载更多
+      document.getElementById('load-more').addEventListener('click', function() {
+        this.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> 加载中...';
+        setTimeout(() => {
+          this.innerHTML = '没有更多数据 <i class="fa fa-check ml-1"></i>';
+          this.disabled = true;
+          this.classList.add('opacity-50', 'cursor-not-allowed');
+        }, 1000);
+      });
+      
+      // 窗口事件
+      window.addEventListener('resize', () => stockData && renderStockList());
+      window.addEventListener('scroll', () => {
+        const header = document.getElementById('main-header');
+        header.classList.toggle('shadow', window.scrollY > 10);
+      });
+      
+      // 初始加载数据
+      fetchStockData();
+    });
+  </script>
+</body>
+</html>
