@@ -183,9 +183,14 @@
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center">
             <h2 class="text-lg font-bold">市场概览</h2>
+            <div class="flex space-x-2">
+              <button class="px-2 py-1 text-xs rounded bg-primary text-white">1日</button>
+              <button class="px-2 py-1 text-xs rounded hover:bg-gray-100 transition">1周</button>
+              <button class="px-2 py-1 text-xs rounded hover:bg-gray-100 transition">1月</button>
+            </div>
           </div>
-          <div class="h-64">
-            <img id="market-chart-image" src="" alt="股票分时行情图" class="w-full h-full object-contain">
+          <div class="p-4 h-64">
+            <canvas id="market-overview-chart"></canvas>
           </div>
         </div>
         
@@ -314,7 +319,6 @@
     let stockData = { stock_list: [], hour_list: [], day_list: [] };
     let expandedStockCode = null;
     let currentFilterConcept = null;
-    let currentChartStockCode = null;
     
     // 显示错误提示
     function showError(message) {
@@ -407,9 +411,6 @@
         renderHotConcepts();
         calculateRiseFallDistribution();
         fetchHotTopics();
-        if (stockData.stock_list.length > 0) {
-          updateMarketChart(stockData.stock_list[0].code);
-        }
         
         return stockData;
         
@@ -568,7 +569,6 @@
         // 添加点击事件
         stockItem.addEventListener('click', () => {
           toggleStockAnalysis(stock.code);
-          updateMarketChart(stock.code);
           if (window.innerWidth < 768) {
             setTimeout(() => stockItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300);
           }
@@ -694,7 +694,7 @@
     // 获取市场名称
     function getMarketName(marketCode) {
       const markets = { 17: '沪A', 33: '深A' };
-      return markets[marketCode] || '京';
+      return markets[marketCode] || '';
     }
     
     // 格式化数字
@@ -837,17 +837,47 @@
       ];
       renderHotTopics(fallbackTopics);
     }
-
-    // 更新市场概览图片
-    function updateMarketChart(code) {
-      if (!code) return;
-      currentChartStockCode = code;
-      const nidPrefix = code.startsWith('6') ? '1' : '0';
-      // API只支持当日分时图，固定imageType=r
-      document.getElementById('market-chart-image').src = 
-        `https://webquotepic.eastmoney.com/GetPic.aspx?imageType=r&type=&nid=${nidPrefix}.${code}`;
+    
+    // 初始化市场概览图表
+    function initMarketOverviewChart() {
+      const ctx = document.getElementById('market-overview-chart').getContext('2d');
+      
+      // 模拟上证指数数据
+      const times = ['9:30', '10:00', '10:30', '11:00', '11:30', '13:30', '14:00', '14:30'];
+      const values = [3275.12, 3281.45, 3285.92, 3283.56, 3286.45, 3288.78, 3287.23, 3289.15];
+      
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: times,
+          datasets: [{
+            label: '上证指数',
+            data: values,
+            borderColor: '#EF4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#EF4444',
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+            y: {
+              position: 'right',
+              grid: { color: 'rgba(0, 0, 0, 0.05)' },
+              ticks: { font: { size: 10 }, callback: v => v.toFixed(2) }
+            }
+          }
+        }
+      });
     }
-
+    
     // 初始化涨跌幅分布图表
     function initRiseFallDistributionChart() {
       const ctx = document.getElementById('rise-fall-distribution-chart').getContext('2d');
@@ -920,6 +950,7 @@
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', function() {
       // 初始化图表
+      initMarketOverviewChart();
       initRiseFallDistributionChart();
       
       // 设置榜单类型切换
